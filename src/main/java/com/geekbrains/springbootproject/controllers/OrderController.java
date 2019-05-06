@@ -3,6 +3,7 @@ package com.geekbrains.springbootproject.controllers;
 import com.geekbrains.springbootproject.entities.Order;
 import com.geekbrains.springbootproject.entities.User;
 import com.geekbrains.springbootproject.services.*;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,10 +22,15 @@ public class OrderController {
     private OrderService orderService;
     private DeliveryAddressService deliverAddressService;
     private ShoppingCartService shoppingCartService;
+    private RabbitTemplate rabbitTemplate;
 
     @Autowired
     public void setShoppingCartService(ShoppingCartService shoppingCartService) {
         this.shoppingCartService = shoppingCartService;
+    }
+    @Autowired
+    public void setRabbitTemplate(RabbitTemplate rabbitTemplate) {
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @Autowired
@@ -67,6 +73,7 @@ public class OrderController {
         order.setDeliveryPrice(0.0);
         order = orderService.saveOrder(order);
         model.addAttribute("order", order);
+        rabbitTemplate.convertAndSend("confirmationExchange","ordConfirm","Order " + order.getId() + " have been confirmed.");
         return "order-before-purchase";
     }
 

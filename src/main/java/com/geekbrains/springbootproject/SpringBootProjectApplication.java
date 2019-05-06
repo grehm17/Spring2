@@ -1,26 +1,47 @@
 package com.geekbrains.springbootproject;
 
+import com.geekbrains.springbootproject.receivers.ConfirmationReceiver;
+import com.rabbitmq.client.impl.AMQImpl;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication
 public class SpringBootProjectApplication {
-	// - Предлагаю заменить хранение цены в Double на BigDecimal в классе и Decimal (10,2) в БД.
-	// - spring.jpa.open-in-view=false
-	// - 5.1 Flyaway
-	//   "CHARSET = utf8;" заменен на "CHARSET = UTF8MB4;"
-	//   Причина - [WARNING] DB: 'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous
-	// - Как по мне, работать с одним файлом "V1_initialization.sql" не удобно
-	// + заменить status(1L, 2L) на enum
 
-	// ???:
-	// - CriteriaQuery from Specs
-	// -
+	@Bean
+	Queue confirmationQueue(){return new Queue("confirmationQueue",false);}
 
-	// Домашнее задание:
-	// - Добавить обзоры товаров (пользователь может сделать только один
-	// обзор на один товар, и только если он его покупал)
-	// - * Категории
+	@Bean
+	DirectExchange confirmationExchange(){return new DirectExchange("confirmationExchange");}
+
+	@Bean
+	Binding confirmationBinding(Queue queue, DirectExchange exchange){
+		return BindingBuilder.bind(queue).to(exchange).with("ordConfirm");
+	}
+
+	@Bean
+	MessageListenerAdapter confirmationListener(ConfirmationReceiver receiver){
+		return new MessageListenerAdapter(receiver,"receiveConfirmation");
+	}
+
+	@Bean
+	SimpleMessageListenerContainer confirmationContainer(ConnectionFactory connectionFactory,MessageListenerAdapter listener){
+		SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
+		container.setConnectionFactory(connectionFactory);
+		container.setQueueNames("confirmationQueue");
+		container.setMessageListener(listener);
+		return container;
+	}
+
 	public static void main(String[] args) {
 		SpringApplication.run(SpringBootProjectApplication.class, args);
 	}
